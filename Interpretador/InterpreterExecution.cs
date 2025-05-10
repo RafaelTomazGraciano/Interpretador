@@ -16,13 +16,13 @@ public class InterpreterExecution {
                 Console.ForegroundColor = ConsoleColor.Green; 
                 string? input = Console.ReadLine();
 
-                if (input?.Trim().ToLower() == "exit") {
+                if (input?.Trim().ToLower().Contains("exit") == true) {
                     Console.ForegroundColor = ConsoleColor.Cyan;
                     Console.WriteLine("Exiting");
                     break;
                 }
 
-                interpreter.newInput(input?.Trim() ?? string.Empty);
+                interpreter.newInput(input!.Trim());
                 interpreter.interpret();
             }
             catch (Exception ex) {

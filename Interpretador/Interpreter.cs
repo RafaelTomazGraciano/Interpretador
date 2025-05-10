@@ -75,6 +75,11 @@
         if (lookahead.type == NUMBER) {
             double value = Convert.ToDouble(lookahead.value);
             match(lookahead);
+            // Validate the next token
+            if (lookahead.type == NUMBER || lookahead.type == VAR || lookahead.value is char symbol && symbol == '=') {
+                throw new Exception($"Unexpected '{lookahead.value}' after a number.");
+            }
+
             return value;
         } 
         else if (lookahead.type == VAR) {
@@ -98,28 +103,51 @@
     }
 
     public void operations() {
-        if (lookahead.type == SYMBOL && lookahead.value is char c && "+-*/".Contains(c)) {
-            while (lookahead.type == SYMBOL && lookahead.value is char symbol && "+-*/".Contains(symbol)) {
-                char operation = Convert.ToChar(lookahead.value);
-                match(lookahead);
-                double operand = number();
+        Stack<double> values = new Stack<double>();
+        Stack<char> operators = new Stack<char>();
 
-                if (operation == '+')
-                    result = result + operand;
-                else if (operation == '-')
-                    result = result - operand;
-                else if (operation == '*')
-                    result = result * operand;
-                else if (operation == '/') {
-                    if (operand == 0)
-                        throw new Exception("Division by zero.");
-                    result = result / operand;
-                }
-            } 
+        values.Push(result);
+
+        while (lookahead.type == SYMBOL && lookahead.value is char symbol && "+-*/".Contains(symbol)) {
+            char operation = Convert.ToChar(lookahead.value);
+            match(lookahead);
+            double operand = number();
+
+            // Process operators based on precedence
+            while (operators.Count > 0 && Precedence(operators.Peek()) >= Precedence(operation)) {
+                double right = values.Pop();
+                double left = values.Pop();
+                char op = operators.Pop();
+                values.Push(ApplyOperation(left, right, op));
+            }
+
+            operators.Push(operation);
+            values.Push(operand);
         }
-        else {
-            throw new Exception($"Expected operator, found '{lookahead.value}'.");
+
+        // Process remaining operators
+        while (operators.Count > 0) {
+            double right = values.Pop();
+            double left = values.Pop();
+            char op = operators.Pop();
+            values.Push(ApplyOperation(left, right, op));
         }
+
+        result = values.Pop();
+    }
+
+    private int Precedence(char operation) {
+        return operation == '+' || operation == '-' ? 1 : 2; // Higher precedence for * and /
+    }
+
+    private double ApplyOperation(double left, double right, char operation) {
+        return operation switch {
+            '+' => left + right,
+            '-' => left - right,
+            '*' => left * right,
+            '/' => right == 0 ? throw new Exception("Division by zero.") : left / right,
+            _ => throw new Exception($"Unknown operator '{operation}'.")
+        };
     }
 
     public void interpret() {
